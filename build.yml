@@ -24,16 +24,21 @@ jobs:
           ZIP=$(find . -maxdepth 2 -name "*.zip" | head -1)
           echo "Found zip: $ZIP"
           unzip -o "$ZIP" -d extracted/
-          # Move contents up (handle nested folder inside zip)
-          INNER=$(find extracted -maxdepth 1 -mindepth 1 -type d | head -1)
-          if [ -n "$INNER" ]; then
-            cp -r "$INNER"/. .
-          else
-            cp -r extracted/. .
-          fi
+          INNER=$(find extracted -maxdepth 2 -name "build.gradle" | head -1 | xargs dirname)
+          echo "Project root: $INNER"
+          cp -r "$INNER"/. .
 
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.4'
+
+      - name: Create gradlew if missing
+        run: |
+          if [ ! -f "./gradlew" ]; then
+            gradle wrapper --gradle-version 8.4
+          fi
+          chmod +x ./gradlew
 
       - name: Build APK
         run: ./gradlew assembleRelease --stacktrace
@@ -44,3 +49,4 @@ jobs:
           name: OxideESP-release
           path: app/build/outputs/apk/release/app-release.apk
           retention-days: 30
+          
