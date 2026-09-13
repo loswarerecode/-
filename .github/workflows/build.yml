@@ -1,0 +1,47 @@
+name: Build OxideESP APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Extract project zip
+        run: |
+          ZIP=$(find . -maxdepth 2 -name "*.zip" | head -1)
+          echo "Found zip: $ZIP"
+          unzip -o "$ZIP" -d extracted/
+          # Move contents up (handle nested folder inside zip)
+          INNER=$(find extracted -maxdepth 1 -mindepth 1 -type d | head -1)
+          if [ -n "$INNER" ]; then
+            cp -r "$INNER"/. .
+          else
+            cp -r extracted/. .
+          fi
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build APK
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: OxideESP-release
+          path: app/build/outputs/apk/release/app-release.apk
+          retention-days: 30
+          
